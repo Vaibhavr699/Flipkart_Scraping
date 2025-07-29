@@ -1,11 +1,13 @@
-require('dotenv').config();
-const connectDB = require('./db');
-const Category = require('./models/Category');
-const Subcategory = require('./models/Subcategory');
-const mongoose = require('mongoose');
-const categories = require('./categories/staticCategories');
-const { scrapeAllProducts } = require('./scraper/flipkartProducts');
-const productSchema = require('./models/Product').schema;
+import 'dotenv/config';
+import mongoose from 'mongoose';
+import { productSchema } from './models/Product.js';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 
 const categoryCollectionMap = {
   // Electronics
@@ -49,75 +51,36 @@ function getProductCollectionName(categoryName) {
 
 function getProductModelForCategory(categoryName) {
   const collectionName = getProductCollectionName(categoryName);
+  // Avoid OverwriteModelError
   if (mongoose.models[collectionName]) {
     return mongoose.models[collectionName];
   }
   return mongoose.model(collectionName, productSchema, collectionName);
 }
 
+// Import the scraping functions from the scraper files
+import { scrapeCategories } from './scraper/categoryScraper.js';
+import { scrapeAndSaveAll } from './scraper/scrapeAllToMongo.js';
+
 async function main() {
-  await connectDB();
-
-  for (const categoryData of categories) {
-    // Save main category
-    const categoryDoc = await Category.findOneAndUpdate(
-      { url: categoryData.url },
-      { $set: { name: categoryData.name, url: categoryData.url, scrapedAt: new Date() } },
-      { upsert: true, new: true }
-    );
-    console.log(`Saved main category: ${categoryData.name}`);
-
-    // Save subcategories for this main category
-    if (categoryData.subcategories && categoryData.subcategories.length > 0) {
-      for (const subcategoryData of categoryData.subcategories) {
-        const subcategoryDoc = await Subcategory.findOneAndUpdate(
-          { url: subcategoryData.url },
-          {
-            $set: {
-              name: subcategoryData.name,
-              url: subcategoryData.url,
-              parentCategory: categoryDoc._id,
-              scrapedAt: new Date()
-            }
-          },
-          { upsert: true, new: true }
-        );
-        console.log(`Saved subcategory: ${subcategoryData.name} under ${categoryData.name}`);
-
-        // Scrape products for this subcategory only
-        console.log(`Scraping all pages of products for subcategory: ${subcategoryData.name}`);
-        const subcategoryProducts = await scrapeAllProducts(subcategoryData.url);
-        console.log(`Found ${subcategoryProducts.length} products in subcategory: ${subcategoryData.name}`);
-
-        // Get the model for this subcategory's products collection
-        const SubcategoryProductModel = getProductModelForCategory(subcategoryData.name);
-
-        // Save subcategory products
-        for (const product of subcategoryProducts) {
-          await SubcategoryProductModel.findOneAndUpdate(
-            { productUrl: product.productUrl },
-            {
-              $set: {
-                ...product,
-                category: subcategoryDoc._id,
-                categoryType: 'subcategory',
-                categoryModel: 'Subcategory',
-                scrapedAt: new Date()
-              }
-            },
-            { upsert: true, new: true }
-          );
-        }
-        console.log(`Saved ${subcategoryProducts.length} products for subcategory: ${subcategoryData.name}`);
-      }
-    }
+  try {
+    console.log('Step 1: Scraping categories from Flipkart...');
+    await scrapeCategories();
+    console.log('Categories scraped successfully!');
+    
+    console.log('Step 2: Scraping subcategories and products and saving to MongoDB...');
+    await scrapeAndSaveAll();
+    console.log('Subcategories and products scraped and saved successfully!');
+    
+    console.log('All scraping tasks completed successfully!');
+    process.exit(0);
+  } catch (error) {
+    console.error('Error in scraping process:', error);
+    process.exit(1);
   }
-
-  console.log('All subcategories and all paginated products saved to MongoDB in separate collections!');
-  process.exit(0);
 }
 
 main().catch(err => {
   console.error(err);
   process.exit(1);
-}); 
+});

@@ -1,4 +1,4 @@
-const puppeteer = require('puppeteer');
+import puppeteer from 'puppeteer';
 
 async function safeGoto(page, url, options = {}, retries = 2) {
   for (let i = 0; i < retries; i++) {
@@ -97,4 +97,4 @@ async function scrapeAllProducts(categoryUrl, maxPages = 100) {
   return allProducts;
 }
 
-module.exports = { scrapeAllProducts }; 
+export { scrapeAllProducts };

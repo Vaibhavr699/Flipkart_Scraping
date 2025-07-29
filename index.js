@@ -7,7 +7,6 @@ const categories = require('./categories/staticCategories');
 const { scrapeAllProducts } = require('./scraper/flipkartProducts');
 const productSchema = require('./models/Product').schema;
 
-// Professional and minimal category mapping with electronics subcategories
 const categoryCollectionMap = {
   // Electronics
   'Electronics': 'electronics',
@@ -50,7 +49,6 @@ function getProductCollectionName(categoryName) {
 
 function getProductModelForCategory(categoryName) {
   const collectionName = getProductCollectionName(categoryName);
-  // Avoid OverwriteModelError
   if (mongoose.models[collectionName]) {
     return mongoose.models[collectionName];
   }

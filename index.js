@@ -4,8 +4,9 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-import connectDB from './db.js';
+
 import { productSchema } from './models/Product.js';
+import connectDB from './db.js';
 import { scrapeCategories } from './scraper/categoryScraper.js';
 import { scrapeAndSaveAll } from './scraper/scrapeAllToMongo.js';
 

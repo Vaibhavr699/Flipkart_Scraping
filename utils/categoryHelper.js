@@ -1,13 +1,13 @@
-const Category = require('../models/Category');
-const Subcategory = require('../models/Subcategory');
+import Category from '../models/Category.js';
+import Subcategory from '../models/Subcategory.js';
 
 /**
  * Get category information from ID
  * @param {string} categoryId - The category ID
  * @param {string} categoryType - 'category' or 'subcategory'
- * @returns {Object} Category information with name, parentName, and fullPath
+ * @returns {Object|null} Category information with name, parentName, and fullPath
  */
-async function getCategoryInfo(categoryId, categoryType) {
+export async function getCategoryInfo(categoryId, categoryType) {
   try {
     if (categoryType === 'subcategory') {
       const subcategory = await Subcategory.findById(categoryId);
@@ -15,8 +15,8 @@ async function getCategoryInfo(categoryId, categoryType) {
         const parentCategory = await Category.findById(subcategory.parentCategory);
         return {
           name: subcategory.name,
-          parentName: parentCategory.name,
-          fullPath: `${parentCategory.name} > ${subcategory.name}`,
+          parentName: parentCategory?.name || null,
+          fullPath: parentCategory ? `${parentCategory.name} > ${subcategory.name}` : subcategory.name,
           type: 'subcategory'
         };
       }
@@ -44,7 +44,7 @@ async function getCategoryInfo(categoryId, categoryType) {
  * @param {string} categoryType - 'category' or 'subcategory'
  * @returns {string} Category name
  */
-async function getCategoryName(categoryId, categoryType) {
+export async function getCategoryName(categoryId, categoryType) {
   const info = await getCategoryInfo(categoryId, categoryType);
   return info ? info.fullPath : 'Unknown Category';
 }
@@ -54,17 +54,15 @@ async function getCategoryName(categoryId, categoryType) {
  * @param {Array} products - Array of product objects
  * @returns {Array} Products with populated category information
  */
-async function populateProductsWithCategories(products) {
+export async function populateProductsWithCategories(products) {
   const populatedProducts = [];
-  
   for (const product of products) {
     const categoryInfo = await getCategoryInfo(product.category, product.categoryType);
     populatedProducts.push({
-      ...product.toObject ? product.toObject() : product,
-      categoryInfo: categoryInfo
+      ...((typeof product.toObject === 'function') ? product.toObject() : product),
+      categoryInfo
     });
   }
-  
   return populatedProducts;
 }
 
@@ -72,11 +70,11 @@ async function populateProductsWithCategories(products) {
  * Get all categories with their subcategories
  * @returns {Array} Categories with subcategories
  */
-async function getAllCategoriesWithSubcategories() {
+export async function getAllCategoriesWithSubcategories() {
   try {
     const categories = await Category.find({});
     const result = [];
-    
+
     for (const category of categories) {
       const subcategories = await Subcategory.find({ parentCategory: category._id });
       result.push({
@@ -90,7 +88,7 @@ async function getAllCategoriesWithSubcategories() {
         }))
       });
     }
-    
+
     return result;
   } catch (error) {
     console.error('Error getting categories with subcategories:', error);
@@ -104,29 +102,29 @@ async function getAllCategoriesWithSubcategories() {
  * @param {Object} ProductModel - The product model to query
  * @returns {Array} Products in that category
  */
-async function getProductsByCategoryPath(categoryPath, ProductModel) {
+export async function getProductsByCategoryPath(categoryPath, ProductModel) {
   try {
     const [parentName, subcategoryName] = categoryPath.split(' > ');
-    
+
     if (subcategoryName) {
-      // It's a subcategory path
       const parentCategory = await Category.findOne({ name: parentName });
-      const subcategory = await Subcategory.findOne({ 
-        name: subcategoryName, 
-        parentCategory: parentCategory._id 
+      if (!parentCategory) return [];
+
+      const subcategory = await Subcategory.findOne({
+        name: subcategoryName,
+        parentCategory: parentCategory._id
       });
-      
+
       if (subcategory) {
         return await ProductModel.find({ category: subcategory._id });
       }
     } else {
-      // It's a main category path
       const category = await Category.findOne({ name: parentName });
       if (category) {
         return await ProductModel.find({ category: category._id });
       }
     }
-    
+
     return [];
   } catch (error) {
     console.error('Error getting products by category path:', error);
@@ -139,9 +137,9 @@ async function getProductsByCategoryPath(categoryPath, ProductModel) {
  * @param {Object} product - Product object
  * @returns {Object} Formatted product with category display
  */
-async function formatProductForDisplay(product) {
+export async function formatProductForDisplay(product) {
   const categoryInfo = await getCategoryInfo(product.category, product.categoryType);
-  
+
   return {
     _id: product._id,
     name: product.name,
@@ -154,18 +152,9 @@ async function formatProductForDisplay(product) {
     productUrl: product.productUrl,
     category: {
       id: product.category,
-      name: categoryInfo ? categoryInfo.fullPath : 'Unknown',
+      name: categoryInfo?.fullPath || 'Unknown',
       type: product.categoryType
     },
-    categoryInfo: categoryInfo
+    categoryInfo
   };
 }
-
-module.exports = {
-  getCategoryInfo,
-  getCategoryName,
-  populateProductsWithCategories,
-  getAllCategoriesWithSubcategories,
-  getProductsByCategoryPath,
-  formatProductForDisplay
-}; 

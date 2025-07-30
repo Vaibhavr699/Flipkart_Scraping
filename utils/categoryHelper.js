@@ -114,6 +114,7 @@ export async function getProductsByCategoryPath(categoryPath, ProductModel) {
         name: subcategoryName,
         parentCategory: parentCategory._id
       });
+      if (!subcategory) return [];
 
       if (subcategory) {
         return await ProductModel.find({ category: subcategory._id });

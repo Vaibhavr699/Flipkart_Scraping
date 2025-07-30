@@ -8,7 +8,13 @@ import { scrapeAllProducts } from './flipkartProducts.js';
 import { productSchema } from '../models/Product.js';
 import { getProductCollectionName } from '../constants/categoryMapping.js';
 
-const categories = JSON.parse(fs.readFileSync('dynamicCategoryMapping.json', 'utf-8'));
+let categories = {};
+  try {
+    categories = JSON.parse(fs.readFileSync('dynamicCategoryMapping.json', 'utf-8'));
+  } catch (error) {
+    console.error('Error reading dynamicCategoryMapping.json:', error.message);
+    throw new Error('Failed to load categories configuration');
+  }
 
 function getCollectionName(name) {
   return getProductCollectionName(name);
@@ -28,19 +34,23 @@ export async function scrapeAndSaveAll() {
     );
 
     const browser = await puppeteer.launch({ headless: true });
-    const page = await browser.newPage();
-    await page.goto(catObj.url, { waitUntil: 'networkidle2' });
-    const subcategories = await page.evaluate(() => {
-      let links = Array.from(document.querySelectorAll('section.Iu4qXa a.uWfXeF, section.Iu4qXa a.hEjLuS.WyLc0s'));
-      if (links.length === 0) {
-        links = Array.from(document.querySelectorAll('a[title][href*="pr?sid="]'));
-      }
-      return links.map(a => ({
-        name: a.getAttribute('title') || a.textContent.trim(),
-        url: a.href
-      })).filter(sub => sub.name && sub.url);
-    });
-    await browser.close();
+    let subcategories = [];
+    try {
+      const page = await browser.newPage();
+      await page.goto(catObj.url, { waitUntil: 'networkidle2' });
+      subcategories = await page.evaluate(() => {
+        let links = Array.from(document.querySelectorAll('section.Iu4qXa a.uWfXeF, section.Iu4qXa a.hEjLuS'));
+        if (links.length === 0) {
+          links = Array.from(document.querySelectorAll('a[title][href*="pr?sid="]'));
+        }
+        return links.map(a => ({
+          name: a.getAttribute('title') || a.textContent.trim(),
+          url: a.href
+        })).filter(sub => sub.name && sub.url);
+      });
+    } finally {
+      await browser.close();
+    }
     if (subcategories.length > 0) {
       for (const sub of subcategories) {
         let subDoc = await Subcategory.findOneAndUpdate(
@@ -98,6 +108,5 @@ export async function scrapeAndSaveAll() {
     }
   }
   console.log('All categories, subcategories, and products saved to MongoDB in separate collections.');
-  process.exit(0);
 }
 

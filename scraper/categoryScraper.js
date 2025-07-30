@@ -5,28 +5,54 @@ import path from 'path';
 export async function scrapeCategories() {
   const browser = await puppeteer.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox']
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--no-first-run',
+      '--no-zygote',
+      '--disable-gpu'
+    ]
   });
 
   const page = await browser.newPage();
-  await page.setUserAgent(
-    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Safari/537.36'
-  );
+  const userAgents = [
+    'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+  ];
+  
+  await page.setUserAgent(userAgents[Math.floor(Math.random() * userAgents.length)]);
+  await page.setViewport({
+    width: 1200 + Math.floor(Math.random() * 200),
+    height: 800 + Math.floor(Math.random() * 200)
+  });
 
   try {
-    await page.goto('https://www.flipkart.com/', {
-      waitUntil: 'networkidle2',
-      timeout: 30000
-    });
+    console.log('🚀 Navigating to Flipkart...');
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      try {
+        await page.goto('https://www.flipkart.com/', {
+          waitUntil: 'domcontentloaded',
+          timeout: 60000
+        });
+        break;
+      } catch (error) {
+        console.log(`⏳ Navigation attempt ${attempt}/3 failed, retrying...`);
+        if (attempt === 3) throw error;
+        await new Promise(resolve => setTimeout(resolve, 3000 * attempt));
+      }
+    }
 
     try {
-      await page.waitForSelector('button._2KpZ6l._2doB4z', { timeout: 5000 });
+      await page.waitForSelector('button._2KpZ6l._2doB4z', { timeout: 10000 });
       await page.click('button._2KpZ6l._2doB4z');
     } catch {
       console.log('Login popup not found or already closed.');
     }
 
-    await page.waitForTimeout(2000);
+    await new Promise(resolve => setTimeout(resolve, 2000));
     await page.screenshot({ path: 'flipkart-screenshot.png' });
     console.log('📸 Screenshot saved to flipkart-screenshot.png');
 

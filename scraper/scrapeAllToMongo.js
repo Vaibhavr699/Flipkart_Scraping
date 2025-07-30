@@ -4,13 +4,14 @@ import mongoose from 'mongoose';
 import Category from '../models/Category.js';
 import Subcategory from '../models/Subcategory.js';
 import connectDB from '../db.js';
-import { scrapeAllProducts } from './flipkartProducts.js'; // Should return an array of product objects
+import { scrapeAllProducts } from './flipkartProducts.js';
 import { productSchema } from '../models/Product.js';
+import { getProductCollectionName } from '../constants/categoryMapping.js';
 
 const categories = JSON.parse(fs.readFileSync('dynamicCategoryMapping.json', 'utf-8'));
 
 function getCollectionName(name) {
-  return 'products_' + name.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  return getProductCollectionName(name);
 }
 
 export async function scrapeAndSaveAll() {

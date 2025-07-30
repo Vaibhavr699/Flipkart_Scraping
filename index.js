@@ -4,15 +4,14 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
-
 import { productSchema } from './models/Product.js';
 import connectDB from './db.js';
 import { scrapeCategories } from './scraper/categoryScraper.js';
 import { scrapeAndSaveAll } from './scraper/scrapeAllToMongo.js';
+import { getProductCollectionName } from './constants/categoryMapping.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
 
 function getProductModelForCategory(categoryName) {
   const collectionName = getProductCollectionName(categoryName);

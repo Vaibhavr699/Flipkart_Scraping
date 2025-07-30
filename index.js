@@ -11,6 +11,7 @@ import { scrapeAndSaveAll } from './scraper/scrapeAllToMongo.js';
 import { getProductCollectionName } from './constants/categoryMapping.js';
 
 const __filename = fileURLToPath(import.meta.url);
+import connectDB from './db.js';
 const __dirname = path.dirname(__filename);
 
 function getProductModelForCategory(categoryName) {

@@ -59,9 +59,9 @@ export async function getCategoryName(categoryId, categoryType) {
 }
 
 /**
- * Populate products with category information
- * @param {Array} products - Array of product objects
- * @returns {Array} Products with populated category information
+ * 
+ * @param {Array} products
+ * @returns {Array} 
  */
 export async function populateProductsWithCategories(products) {
   const populatedProducts = [];
@@ -76,8 +76,8 @@ export async function populateProductsWithCategories(products) {
 }
 
 /**
- * Get all categories with their subcategories
- * @returns {Array} Categories with subcategories
+ * 
+ * @returns {Array}
  */
 export async function getAllCategoriesWithSubcategories() {
   try {
@@ -134,8 +134,8 @@ export async function getProductsByCategoryPath(categoryPath, ProductModel) {
       }
 
       const subcategory = await Subcategory.findOne({
-        name: subcategoryName,
-        parentCategory: parentCategory._id
+        name: { $eq: subcategoryName },
+        parentCategory: { $eq: parentCategory._id }
       });
       if (!subcategory) {
         console.warn(`Subcategory not found: ${subcategoryName} under ${parentName}`);
